@@ -44,7 +44,6 @@ def extract_email_from_website(website_url: str) -> str:
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
     found_emails = set()
 
-    # Try homepage
     try:
         req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(req, timeout=5) as response:
@@ -53,7 +52,6 @@ def extract_email_from_website(website_url: str) -> str:
     except Exception as e:
         logging.debug(f"Could not fetch homepage {url}: {e}")
 
-    # If no email found on homepage, try /contact or /about
     if not found_emails:
         base_url = url.rstrip('/')
         for path in ['/contact', '/contact-us', '/about', '/about-us']:
@@ -102,7 +100,6 @@ def extract_text(page: Page, xpath: str) -> str:
     return ""
 
 def extract_place(page: Page) -> Place:
-    # XPaths
     name_xpath = '//div[@class="TIHn2 "]//h1[@class="DUwDvf lfPIob"]'
     address_xpath = '//button[@data-item-id="address"]//div[contains(@class, "fontBodyMedium")]'
     website_xpath = '//a[@data-item-id="authority"]//div[contains(@class, "fontBodyMedium")]'
@@ -126,7 +123,6 @@ def extract_place(page: Page) -> Place:
     place.place_type = extract_text(page, place_type_xpath)
     place.introduction = extract_text(page, intro_xpath) or "None Found"
 
-    # Extract email from Google Maps card text or from website
     page_text = extract_text(page, '//div[@class="TIHn2 "]')
     card_emails = extract_emails_from_html(page_text)
     if card_emails:
@@ -135,7 +131,6 @@ def extract_place(page: Page) -> Place:
         logging.info(f"Extracting email from website: {place.website}")
         place.email = extract_email_from_website(place.website)
 
-    # Reviews Count
     reviews_count_raw = extract_text(page, reviews_count_xpath)
     if reviews_count_raw:
         try:
@@ -143,7 +138,7 @@ def extract_place(page: Page) -> Place:
             place.reviews_count = int(temp)
         except Exception as e:
             logging.warning(f"Failed to parse reviews count: {e}")
-    # Reviews Average
+
     reviews_avg_raw = extract_text(page, reviews_average_xpath)
     if reviews_avg_raw:
         try:
@@ -151,7 +146,7 @@ def extract_place(page: Page) -> Place:
             place.reviews_average = float(temp)
         except Exception as e:
             logging.warning(f"Failed to parse reviews average: {e}")
-    # Store Info
+
     for idx, info_xpath in enumerate([info1, info2, info3]):
         info_raw = extract_text(page, info_xpath)
         if info_raw:
@@ -164,7 +159,7 @@ def extract_place(page: Page) -> Place:
                     place.in_store_pickup = "Yes"
                 if 'delivery' in check:
                     place.store_delivery = "Yes"
-    # Opens At
+
     opens_at_raw = extract_text(page, opens_at_xpath)
     if opens_at_raw:
         opens = opens_at_raw.split('⋅')
@@ -218,7 +213,7 @@ def scrape_places(search_for: str, total: int) -> List[Place]:
                 try:
                     listing.click()
                     page.wait_for_selector('//div[@class="TIHn2 "]//h1[@class="DUwDvf lfPIob"]', timeout=10000)
-                    time.sleep(1.5)  # Give time for details to load
+                    time.sleep(1.5)
                     place = extract_place(page)
                     if place.name:
                         places.append(place)
@@ -231,7 +226,6 @@ def scrape_places(search_for: str, total: int) -> List[Place]:
     return places
 
 def convert_csv_to_excel(csv_path: str, excel_path: Optional[str] = None) -> str:
-    """Converts an existing CSV file to an Excel sheet (.xlsx)."""
     if not os.path.exists(csv_path):
         logging.error(f"CSV file not found: {csv_path}")
         return ""
@@ -268,7 +262,6 @@ def save_places_to_excel(places: List[Place], output_path: str = "result.xlsx", 
         logging.warning("No data to save. DataFrame is empty.")
         return
 
-    # Keep only the requested 5 columns in exact order: Name, Email, Category, Phone Number, Website
     column_mapping = [
         ('name', 'Name'),
         ('email', 'Email'),
@@ -284,16 +277,13 @@ def save_places_to_excel(places: List[Place], output_path: str = "result.xlsx", 
         else:
             new_df[dest_col] = ""
 
-    # Ensure output_path ends with .xlsx
     if not output_path.lower().endswith(".xlsx"):
         output_path = os.path.splitext(output_path)[0] + ".xlsx"
 
-    # Auto-append if Excel file already exists (unless overwrite is specified)
     if os.path.exists(output_path) and not overwrite:
         try:
             existing_df = pd.read_excel(output_path)
             combined_df = pd.concat([existing_df, new_df], ignore_index=True)
-            # Remove exact duplicate places based on Name, Phone Number, and Website
             combined_df.drop_duplicates(subset=['Name', 'Phone Number', 'Website'], keep='first', inplace=True)
             final_df = combined_df
             logging.info(f"Appended new results! Total rows in '{output_path}': {len(final_df)}")
