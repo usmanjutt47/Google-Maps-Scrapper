@@ -6,7 +6,6 @@ from playwright.sync_api import sync_playwright, Page
 from dataclasses import dataclass, asdict
 import pandas as pd
 import argparse
-import platform
 import time
 import os
 
@@ -181,11 +180,9 @@ def scrape_places(search_for: str, total: int) -> List[Place]:
     setup_logging()
     places: List[Place] = []
     with sync_playwright() as p:
-        if platform.system() == "Windows":
-            browser_path = r"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
-            browser = p.chromium.launch(executable_path=browser_path, headless=False)
-        else:
-            browser = p.chromium.launch(headless=False)
+        # Use Playwright's managed Chromium instead of a machine-specific
+        # Chrome installation path so the scraper works on other laptops.
+        browser = p.chromium.launch(headless=False)
         page = browser.new_page()
         try:
             page.goto("https://www.google.com/maps/@32.9817464,70.1930781,3.67z?", timeout=60000)
@@ -195,16 +192,23 @@ def scrape_places(search_for: str, total: int) -> List[Place]:
             page.wait_for_selector('//a[contains(@href, "https://www.google.com/maps/place")]')
             page.hover('//a[contains(@href, "https://www.google.com/maps/place")]')
             previously_counted = 0
+            unchanged_rounds = 0
             while True:
                 page.mouse.wheel(0, 10000)
+                # Google Maps loads more cards asynchronously after scrolling.
+                page.wait_for_timeout(1500)
                 page.wait_for_selector('//a[contains(@href, "https://www.google.com/maps/place")]')
                 found = page.locator('//a[contains(@href, "https://www.google.com/maps/place")]').count()
                 logging.info(f"Currently Found: {found}")
                 if found >= total:
                     break
                 if found == previously_counted:
-                    logging.info("Arrived at all available")
-                    break
+                    unchanged_rounds += 1
+                    if unchanged_rounds >= 3:
+                        logging.info("Arrived at all available")
+                        break
+                else:
+                    unchanged_rounds = 0
                 previously_counted = found
             listings = page.locator('//a[contains(@href, "https://www.google.com/maps/place")]').all()[:total]
             listings = [listing.locator("xpath=..") for listing in listings]
