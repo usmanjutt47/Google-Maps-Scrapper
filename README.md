@@ -20,7 +20,8 @@ If you are using this project for the first time, follow these step-by-step inst
 
 ### Step 1: Install Python
 
-Ensure you have Python 3.8 or higher installed on your computer.
+Ensure you have Python 3.12 installed on your computer. Python 3.12 is
+recommended because the pinned dependencies are tested with it.
 
 #### 🪟 Windows:
 1. Download the latest Python installer from [python.org/downloads](https://www.python.org/downloads/).
@@ -86,6 +87,9 @@ Install the required Python packages and the Chromium browser engine used by Pla
 pip install -r requirements.txt
 playwright install chromium
 ```
+
+The scraper uses Playwright's managed Chromium browser, so it does not depend
+on Chrome being installed at a particular path on the laptop.
 
 ---
 

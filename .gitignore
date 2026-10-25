@@ -1,6 +1,24 @@
 __pycache__/
 *.pyc
+
+# Local Python environments
+venv/
+venv*/
+.venv/
+env/
+
+# Local configuration and tooling
+.env
+.env.*
+.idea/
+.vscode/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.log
+
+# Generated scraper output
 result.csv
 output.csv
 *.xlsx
-playwright/.cache/ 
+playwright/.cache/
